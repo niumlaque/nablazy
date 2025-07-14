@@ -1,0 +1,11 @@
+services:
+  nablazy-app:
+    build: .
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./downloads:/app/downloads
+    restart: "no"
+    environment:
+      - PYTHONUNBUFFERED=1
+

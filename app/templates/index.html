@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nablazy</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Nablazy</h1>
+
+        <form id="download-form" method="POST" action="/download">
+            <div class="form-group">
+                <label for="url">Video URL (YouTube / Twitter):</label>
+                <input type="url" id="url" name="url" required placeholder="https://www.youtube.com/watch?v=... etc.">
+            </div>
+
+            <div class="form-group">
+                <label for="format">Save Format:</label>
+                <select id="format" name="format" required>
+                    <option value="">Please select format</option>
+                    <option value="video">Video</option>
+                    <option value="audio">Audio</option>
+                </select>
+            </div>
+
+            <button type="submit" class="download-btn" id="download-btn">Download</button>
+        </form>
+
+        <div id="status" class="status"></div>
+    </div>
+
+    <script>
+        document.getElementById('download-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const status = document.getElementById('status');
+            const downloadBtn = document.getElementById('download-btn');
+            const url = document.getElementById('url').value;
+            const format = document.getElementById('format').value;
+
+            if (!url || !format) {
+                status.innerHTML = '<p class="error">Please enter URL and format</p>';
+                return;
+            }
+
+            // Disable button
+            downloadBtn.disabled = true;
+            downloadBtn.textContent = 'Downloading...';
+
+            status.innerHTML = '<p class="loading">Starting download...</p>';
+
+            const formData = new FormData();
+            formData.append('url', url);
+            formData.append('format', format);
+
+            fetch('/download', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Get filename from Content-Disposition header
+                    const contentDisposition = response.headers.get('Content-Disposition');
+                    let filename = 'download';
+
+                    if (contentDisposition) {
+                        // Get from filename*=UTF-8''<encoded_filename> format
+                        const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/);
+                        if (filenameStarMatch) {
+                            filename = decodeURIComponent(filenameStarMatch[1]);
+                        } else {
+                            // Get from standard filename="<filename>" format
+                            const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+                            if (filenameMatch) {
+                                filename = filenameMatch[1];
+                            }
+                        }
+                    }
+
+                    return { blob: response.blob(), filename: filename };
+                } else {
+                    throw new Error('Download error');
+                }
+            })
+            .then(data => {
+                return data.blob.then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = data.filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                    status.innerHTML = '<p class="success">Download completed</p>';
+
+                    // Enable button
+                    downloadBtn.disabled = false;
+                    downloadBtn.textContent = 'Download';
+                });
+            })
+            .catch(error => {
+                status.innerHTML = '<p class="error">An error occurred: ' + error.message + '</p>';
+
+                // Enable button
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = 'Download';
+            });
+        });
+    </script>
+</body>
+</html>
+

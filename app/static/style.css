@@ -1,0 +1,135 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: #1e1e1e;
+    color: #cccccc;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.container {
+    background: #252526;
+    padding: 40px;
+    border-radius: 8px;
+    border: 1px solid #3c3c3c;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    max-width: 500px;
+    width: 100%;
+}
+
+h1 {
+    text-align: center;
+    color: #ffffff;
+    margin-bottom: 30px;
+    font-size: 28px;
+    font-weight: 400;
+}
+
+.form-group {
+    margin-bottom: 25px;
+}
+
+label {
+    display: block;
+    margin-bottom: 8px;
+    color: #cccccc;
+    font-weight: 500;
+}
+
+input[type="url"],
+select {
+    width: 100%;
+    padding: 12px 16px;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    font-size: 16px;
+    background: #3c3c3c;
+    color: #cccccc;
+    transition: border-color 0.3s ease;
+}
+
+input[type="url"]:focus,
+select:focus {
+    outline: none;
+    border-color: #007acc;
+    background: #404040;
+}
+
+.download-btn {
+    width: 100%;
+    padding: 15px;
+    background: #007acc;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.download-btn:hover {
+    background: #005a9e;
+}
+
+.download-btn:active {
+    background: #004578;
+}
+
+.download-btn:disabled {
+    background: #3c3c3c;
+    color: #6c6c6c;
+    cursor: not-allowed;
+}
+
+.download-btn:disabled:hover {
+    background: #3c3c3c;
+}
+
+.status {
+    margin-top: 20px;
+    text-align: center;
+}
+
+.status p {
+    padding: 12px;
+    border-radius: 4px;
+    margin: 0;
+}
+
+.success {
+    background-color: #1e3a1e;
+    color: #4caf50;
+    border: 1px solid #2e5d2e;
+}
+
+.error {
+    background-color: #3a1e1e;
+    color: #f44336;
+    border: 1px solid #5d2e2e;
+}
+
+.loading {
+    background-color: #1e2a3a;
+    color: #2196f3;
+    border: 1px solid #2e3d5d;
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 30px 20px;
+    }
+
+    h1 {
+        font-size: 24px;
+    }
+}
+
