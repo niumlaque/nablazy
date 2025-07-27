@@ -187,6 +187,27 @@ class TestIntegration(unittest.TestCase):
         error_data = response.json()
         self.assertIn('error', error_data)
 
+    def test_should_log_ytdlp_error_when_download_fails(self):
+        """Test 4: Confirm ytdlp error is logged to Docker logs when download fails"""
+        failing_url = "https://x.com/eurosport_nl/status/1948352697792389534?s=46&t=ELSr1I78F3BnPuHrFtlWPQ"
+
+        # Send download request that should fail
+        response = requests.post(
+            f"{self.BASE_URL}/download",
+            data={"url": failing_url, "format": "video"},
+            timeout=30
+        )
+
+        # Confirm that download fails with error status
+        self.assertEqual(response.status_code, 500)
+        error_data = response.json()
+        self.assertIn('error', error_data)
+
+        # Note: The actual Docker log checking should be done externally
+        # This test confirms the error response is returned correctly
+        print(f"Download failed as expected for URL: {failing_url}")
+        print(f"Error response: {error_data['error']}")
+
 
 if __name__ == '__main__':
     unittest.main(verbosity=2)

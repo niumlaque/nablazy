@@ -59,7 +59,9 @@ def download():
         # Create response
         return create_download_response(file_path, filename)
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        msg = str(e)
+        print(msg)
+        return jsonify({'error': msg}), 500
 
 
 @app.route('/health')
