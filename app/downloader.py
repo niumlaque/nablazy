@@ -67,7 +67,7 @@ def find_downloaded_file(temp_dir):
 def download_video(url, format_type='video', download_dir='/app/downloads'):
     """Download video"""
     if not is_valid_video_url(url):
-        raise ValueError("有効な動画URL（YouTube/Twitter）ではありません")
+        raise ValueError("有効な動画URL（YouTube/Twitter/TikTok）ではありません")
 
     # Remove unnecessary parameters from URL (to stabilize yt-dlp processing)
     clean_url = clean_video_url(url)
