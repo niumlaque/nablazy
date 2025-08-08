@@ -67,7 +67,7 @@
 
                     if (contentDisposition) {
                         // Get from filename*=UTF-8''<encoded_filename> format
-                        const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''([^;]+)/);
+                        const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''(?:')?([^;]+)/i);
                         if (filenameStarMatch) {
                             filename = decodeURIComponent(filenameStarMatch[1]);
                         } else {

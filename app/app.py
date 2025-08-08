@@ -49,12 +49,14 @@ def download():
     try:
         url = request.form.get('url')
         format_type = request.form.get('format')
+        print(f'/download: [{format_type}] {url}', flush=True)
 
         if not url or not format_type:
             return jsonify({'error': 'URLと形式を指定してください'}), 400
 
         # Execute download
         file_path, filename = download_video(url, format_type, DOWNLOAD_DIR)
+        print(f'Save: "{file_path}"')
 
         # Create response
         return create_download_response(file_path, filename)
