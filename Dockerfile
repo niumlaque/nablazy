@@ -9,9 +9,8 @@ RUN apt-get update && apt-get install -y \
     ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
-# yt-dlpのインストール
-RUN pipx ensurepath && pipx install yt-dlp
-RUN pip3 install --break-system-packages flask requests
+# Python パッケージのインストール
+RUN pip3 install --break-system-packages flask requests yt-dlp
 
 # PATHを設定
 ENV PATH="/root/.local/bin:$PATH"

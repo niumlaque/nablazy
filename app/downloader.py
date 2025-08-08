@@ -1,7 +1,7 @@
 import os
 import tempfile
 import shutil
-import subprocess
+import yt_dlp
 
 from video_utils import is_valid_video_url, clean_video_url
 from file_utils import create_safe_filename, create_download_filename
@@ -10,45 +10,54 @@ from exceptions import VideoDownloadError, FileNotFoundError
 
 def get_video_title(url):
     """Get video title"""
-    title_cmd = ['yt-dlp', '--get-title', url]
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+    }
     try:
-        title_result = subprocess.run(title_cmd, capture_output=True, text=True, check=True)
-        return title_result.stdout.strip()
-    except subprocess.CalledProcessError:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info_dict = ydl.extract_info(url, download=False)
+            return info_dict.get('title', 'download')
+    except Exception:
         # Fallback when title acquisition fails (invalid URLs, deleted videos, etc.)
         return 'download'
 
 
-def build_ytdlp_command(url, temp_dir, format_type):
-    """Build yt-dlp command"""
+def build_ytdlp_options(temp_dir, format_type):
+    """Build yt-dlp options"""
     output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
 
+    base_opts = {
+        'outtmpl': output_template,
+        'quiet': True,
+        'no_warnings': True,
+    }
+
     if format_type == 'audio':
-        return [
-            'yt-dlp',
-            '--format', 'bestaudio/best',
-            '--extract-audio',
-            '--audio-format', 'mp3',
-            '--audio-quality', '192',
-            '--output', output_template,
-            url
-        ]
+        base_opts.update({
+            'format': 'bestaudio/best',
+            'postprocessors': [{
+                'key': 'FFmpegExtractAudio',
+                'preferredcodec': 'mp3',
+                'preferredquality': '192',
+            }],
+        })
     else:
-        return [
-            'yt-dlp',
-            '--format', 'bestvideo+bestaudio/best',
-            '--merge-output-format', 'mp4',
-            '--output', output_template,
-            url
-        ]
+        base_opts.update({
+            'format': 'bestvideo+bestaudio/best',
+            'merge_output_format': 'mp4',
+        })
+
+    return base_opts
 
 
-def execute_download(cmd):
+def execute_download(url, ydl_opts):
     """Execute download"""
     try:
-        subprocess.run(cmd, check=True, capture_output=True)
-    except subprocess.CalledProcessError as e:
-        raise VideoDownloadError(f"ダウンロードエラー: {e.stderr.decode()}")
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+    except Exception as e:
+        raise VideoDownloadError(f"ダウンロードエラー: {str(e)}")
 
 
 def find_downloaded_file(temp_dir):
@@ -77,8 +86,8 @@ def download_video(url, format_type='video', download_dir='/app/downloads'):
         title = get_video_title(clean_url)
         safe_title = create_safe_filename(title)
 
-        cmd = build_ytdlp_command(clean_url, temp_dir, format_type)
-        execute_download(cmd)
+        ydl_opts = build_ytdlp_options(temp_dir, format_type)
+        execute_download(clean_url, ydl_opts)
 
         downloaded_file = find_downloaded_file(temp_dir)
         source_file = os.path.join(temp_dir, downloaded_file)
