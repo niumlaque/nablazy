@@ -4,12 +4,12 @@ Video Download Application
 
 ## Overview
 
-Nablazy is a web application that allows you to download videos from YouTube and X (formerly Twitter) to your local environment.  
+Nablazy is a web application that allows you to download videos from YouTube, X (formerly Twitter), and TikTok to your local environment.  
 It runs within Docker containers, ensuring safe usage without polluting your host environment.
 
 ## Main Features
 
-- **Video Download**: Download videos from YouTube and X (Twitter)
+- **Video Download**: Download videos from YouTube, X (Twitter), and TikTok
 - **Audio Conversion**: Extract audio (mp3) from videos
 
 ## System Requirements
@@ -36,7 +36,7 @@ It runs within Docker containers, ensuring safe usage without polluting your hos
 ## Usage
 
 1. Access the download page in your browser
-2. Enter the video URL (YouTube or X/Twitter)
+2. Enter the video URL (YouTube, X/Twitter, or TikTok)
 3. Select the save format (video or audio)
 4. Click the download button
 5. The browser's download dialog will appear, and the file will be saved locally.
