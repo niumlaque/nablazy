@@ -8,6 +8,38 @@ from file_utils import create_safe_filename, create_download_filename
 from exceptions import VideoDownloadError, FileNotFoundError
 
 
+class ProgressHook:
+    """Progress tracking for yt-dlp downloads"""
+
+    def __init__(self):
+        self.last_percent = -1
+
+    def reset(self):
+        """Reset progress tracking for new download"""
+        self.last_percent = -1
+
+    def __call__(self, d):
+        """Progress hook for yt-dlp to show download progress"""
+        if d['status'] == 'downloading':
+            if 'total_bytes' in d and d['total_bytes']:
+                percent = d['downloaded_bytes'] / d['total_bytes'] * 100
+                # Print progress every 1%
+                if int(percent) != self.last_percent:
+                    self.last_percent = int(percent)
+                    print(f"Download progress: {int(percent)}%")
+            elif 'total_bytes_estimate' in d and d['total_bytes_estimate']:
+                percent = d['downloaded_bytes'] / d['total_bytes_estimate'] * 100
+                # Print progress every 1%
+                if int(percent) != self.last_percent:
+                    self.last_percent = int(percent)
+                    print(f"Download progress: {int(percent)}% (estimated)")
+        elif d['status'] == 'finished':
+            print(f"Download completed: {d['filename']}")
+
+# Create progress hook instance
+progress_hook = ProgressHook()
+
+
 def get_video_title(url):
     """Get video title"""
     ydl_opts = {
@@ -31,6 +63,7 @@ def build_ytdlp_options(temp_dir, format_type):
         'outtmpl': output_template,
         'quiet': True,
         'no_warnings': True,
+        'progress_hooks': [progress_hook],
     }
 
     if format_type == 'audio':
@@ -54,6 +87,8 @@ def build_ytdlp_options(temp_dir, format_type):
 def execute_download(url, ydl_opts):
     """Execute download"""
     try:
+        # Reset progress tracking for new download
+        progress_hook.reset()
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
     except Exception as e:
