@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# downloads ディレクトリの権限を修正
+# Fix downloads directory permissions
 if [ -d "/app/downloads" ]; then
     sudo chown -R nablazy:nablazy /app/downloads
 fi
 
-# 元のコマンドを実行
+# Execute original command
 exec "$@"
 
