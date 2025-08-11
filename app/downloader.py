@@ -36,102 +36,108 @@ class ProgressHook:
         elif d['status'] == 'finished':
             print(f"Download completed: {d['filename']}")
 
-# Create progress hook instance
-progress_hook = ProgressHook()
+
+class Downloader:
+    """Video downloader class"""
+
+    def __init__(self):
+        self.progress_hook = ProgressHook()
+
+    def get_video_title(self, url):
+        """Get video title"""
+        ydl_opts = {
+            'quiet': True,
+            'no_warnings': True,
+        }
+        try:
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                info_dict = ydl.extract_info(url, download=False)
+                return info_dict.get('title', 'download')
+        except Exception:
+            # Fallback when title acquisition fails (invalid URLs, deleted videos, etc.)
+            return 'download'
+
+    def build_ytdlp_options(self, temp_dir, format_type):
+        """Build yt-dlp options"""
+        output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
+
+        base_opts = {
+            'outtmpl': output_template,
+            'quiet': True,
+            'no_warnings': True,
+            'progress_hooks': [self.progress_hook],
+        }
+
+        if format_type == 'audio':
+            base_opts.update({
+                'format': 'bestaudio/best',
+                'postprocessors': [{
+                    'key': 'FFmpegExtractAudio',
+                    'preferredcodec': 'mp3',
+                    'preferredquality': '192',
+                }],
+            })
+        else:
+            base_opts.update({
+                'format': 'bestvideo+bestaudio/best',
+                'merge_output_format': 'mp4',
+            })
+
+        return base_opts
+
+    def execute_download(self, url, ydl_opts):
+        """Execute download"""
+        try:
+            # Reset progress tracking for new download
+            self.progress_hook.reset()
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([url])
+        except Exception as e:
+            raise VideoDownloadError(f"ダウンロードエラー: {str(e)}")
+
+    def find_downloaded_file(self, temp_dir):
+        """Find downloaded file"""
+        downloaded_files = []
+        for file in os.listdir(temp_dir):
+            if os.path.isfile(os.path.join(temp_dir, file)):
+                downloaded_files.append(file)
+
+        if not downloaded_files:
+            raise FileNotFoundError("ダウンロードされたファイルが見つかりません")
+
+        return downloaded_files[0]
+
+    def download_video(self, url, format_type='video', download_dir='/app/downloads'):
+        """Download video"""
+        if not is_valid_video_url(url):
+            raise ValueError("有効な動画URL（YouTube/Twitter/TikTok）ではありません")
+
+        # Remove unnecessary parameters from URL (to stabilize yt-dlp processing)
+        clean_url = clean_video_url(url)
+
+        # Use temporary directory (because yt-dlp generates unpredictable filenames)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            title = self.get_video_title(clean_url)
+            safe_title = create_safe_filename(title)
+
+            ydl_opts = self.build_ytdlp_options(temp_dir, format_type)
+            self.execute_download(clean_url, ydl_opts)
+
+            downloaded_file = self.find_downloaded_file(temp_dir)
+            source_file = os.path.join(temp_dir, downloaded_file)
+
+            final_filename = create_download_filename(safe_title, format_type, downloaded_file)
+            destination = os.path.join(download_dir, final_filename)
+
+            # Copy file to final location (from temporary directory to persistent location)
+            shutil.copy2(source_file, destination)
+
+            return destination, final_filename
 
 
-def get_video_title(url):
-    """Get video title"""
-    ydl_opts = {
-        'quiet': True,
-        'no_warnings': True,
-    }
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info_dict = ydl.extract_info(url, download=False)
-            return info_dict.get('title', 'download')
-    except Exception:
-        # Fallback when title acquisition fails (invalid URLs, deleted videos, etc.)
-        return 'download'
-
-
-def build_ytdlp_options(temp_dir, format_type):
-    """Build yt-dlp options"""
-    output_template = os.path.join(temp_dir, '%(title)s.%(ext)s')
-
-    base_opts = {
-        'outtmpl': output_template,
-        'quiet': True,
-        'no_warnings': True,
-        'progress_hooks': [progress_hook],
-    }
-
-    if format_type == 'audio':
-        base_opts.update({
-            'format': 'bestaudio/best',
-            'postprocessors': [{
-                'key': 'FFmpegExtractAudio',
-                'preferredcodec': 'mp3',
-                'preferredquality': '192',
-            }],
-        })
-    else:
-        base_opts.update({
-            'format': 'bestvideo+bestaudio/best',
-            'merge_output_format': 'mp4',
-        })
-
-    return base_opts
-
-
-def execute_download(url, ydl_opts):
-    """Execute download"""
-    try:
-        # Reset progress tracking for new download
-        progress_hook.reset()
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
-    except Exception as e:
-        raise VideoDownloadError(f"ダウンロードエラー: {str(e)}")
-
-
-def find_downloaded_file(temp_dir):
-    """Find downloaded file"""
-    downloaded_files = []
-    for file in os.listdir(temp_dir):
-        if os.path.isfile(os.path.join(temp_dir, file)):
-            downloaded_files.append(file)
-
-    if not downloaded_files:
-        raise FileNotFoundError("ダウンロードされたファイルが見つかりません")
-
-    return downloaded_files[0]
-
-
+# Backward compatibility function
 def download_video(url, format_type='video', download_dir='/app/downloads'):
-    """Download video"""
-    if not is_valid_video_url(url):
-        raise ValueError("有効な動画URL（YouTube/Twitter/TikTok）ではありません")
-
-    # Remove unnecessary parameters from URL (to stabilize yt-dlp processing)
-    clean_url = clean_video_url(url)
-
-    # Use temporary directory (because yt-dlp generates unpredictable filenames)
-    with tempfile.TemporaryDirectory() as temp_dir:
-        title = get_video_title(clean_url)
-        safe_title = create_safe_filename(title)
-
-        ydl_opts = build_ytdlp_options(temp_dir, format_type)
-        execute_download(clean_url, ydl_opts)
-
-        downloaded_file = find_downloaded_file(temp_dir)
-        source_file = os.path.join(temp_dir, downloaded_file)
-
-        final_filename = create_download_filename(safe_title, format_type, downloaded_file)
-        destination = os.path.join(download_dir, final_filename)
-
-        # Copy file to final location (from temporary directory to persistent location)
-        shutil.copy2(source_file, destination)
-
-        return destination, final_filename
+    """Download video (backward compatibility function)"""
+    downloader = Downloader()
+    return downloader.download_video(url, format_type, download_dir)
 
