@@ -1,8 +1,7 @@
-import os
 import time
 import requests
 import unittest
-from urllib.parse import quote, unquote
+from urllib.parse import unquote
 
 
 class TestIntegration(unittest.TestCase):
@@ -36,15 +35,15 @@ class TestIntegration(unittest.TestCase):
         response = requests.post(
             f"{self.BASE_URL}/download",
             data={"url": url, "format": "video"},
-            timeout=120
+            timeout=120,
         )
 
         # Confirm response is successful
         self.assertEqual(response.status_code, 200)
 
         # Extract filename from Content-Disposition header
-        content_disposition = response.headers.get('Content-Disposition', '')
-        self.assertIn('attachment', content_disposition)
+        content_disposition = response.headers.get("Content-Disposition", "")
+        self.assertIn("attachment", content_disposition)
 
         filename = self._extract_filename_from_content_disposition(content_disposition)
 
@@ -56,13 +55,13 @@ class TestIntegration(unittest.TestCase):
         self.assertIn(
             expected_title,
             clean_filename,
-            f"Filename '{clean_filename}' does not contain expected title '{expected_title}'"
+            f"Filename '{clean_filename}' does not contain expected title '{expected_title}'",
         )
 
         # Confirm that appropriate extension for video format is assigned
         self.assertTrue(
-            clean_filename.endswith(('.mp4', '.webm', '.mkv')),
-            f"Filename '{clean_filename}' does not have expected video extension"
+            clean_filename.endswith((".mp4", ".webm", ".mkv")),
+            f"Filename '{clean_filename}' does not have expected video extension",
         )
 
         # Confirm that response body contains file data
@@ -78,15 +77,15 @@ class TestIntegration(unittest.TestCase):
         response = requests.post(
             f"{self.BASE_URL}/download",
             data={"url": url, "format": "audio"},
-            timeout=120
+            timeout=120,
         )
 
         # Confirm response is successful
         self.assertEqual(response.status_code, 200)
 
         # Extract filename from Content-Disposition header
-        content_disposition = response.headers.get('Content-Disposition', '')
-        self.assertIn('attachment', content_disposition)
+        content_disposition = response.headers.get("Content-Disposition", "")
+        self.assertIn("attachment", content_disposition)
 
         filename = self._extract_filename_from_content_disposition(content_disposition)
 
@@ -98,13 +97,13 @@ class TestIntegration(unittest.TestCase):
         self.assertIn(
             expected_title,
             clean_filename,
-            f"Filename '{clean_filename}' does not contain expected title '{expected_title}'"
+            f"Filename '{clean_filename}' does not contain expected title '{expected_title}'",
         )
 
         # Confirm that .mp3 extension is assigned
         self.assertTrue(
-            clean_filename.endswith('.mp3'),
-            f"Filename '{clean_filename}' does not have .mp3 extension"
+            clean_filename.endswith(".mp3"),
+            f"Filename '{clean_filename}' does not have .mp3 extension",
         )
 
         # Confirm that response body contains file data
@@ -120,15 +119,15 @@ class TestIntegration(unittest.TestCase):
         response = requests.post(
             f"{self.BASE_URL}/download",
             data={"url": url, "format": "video"},
-            timeout=120
+            timeout=120,
         )
 
         # Confirm response is successful
         self.assertEqual(response.status_code, 200)
 
         # Extract filename from Content-Disposition header
-        content_disposition = response.headers.get('Content-Disposition', '')
-        self.assertIn('attachment', content_disposition)
+        content_disposition = response.headers.get("Content-Disposition", "")
+        self.assertIn("attachment", content_disposition)
 
         filename = self._extract_filename_from_content_disposition(content_disposition)
 
@@ -139,8 +138,8 @@ class TestIntegration(unittest.TestCase):
 
         # Confirm that appropriate extension for video format is assigned
         self.assertTrue(
-            clean_filename.endswith(('.mp4', '.webm', '.mkv')),
-            f"Filename '{clean_filename}' does not have expected video extension"
+            clean_filename.endswith((".mp4", ".webm", ".mkv")),
+            f"Filename '{clean_filename}' does not have expected video extension",
         )
 
         # Confirm that response body contains file data
@@ -174,18 +173,18 @@ class TestIntegration(unittest.TestCase):
         """Confirm that health check endpoint works correctly"""
         response = requests.get(f"{self.BASE_URL}/health")
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.json(), {'status': 'ok'})
+        self.assertEqual(response.json(), {"status": "ok"})
 
     def test_invalid_url_returns_error(self):
         """Confirm that error is returned for invalid URL"""
         response = requests.post(
             f"{self.BASE_URL}/download",
             data={"url": "https://invalid-url.com", "format": "video"},
-            timeout=30
+            timeout=30,
         )
         self.assertEqual(response.status_code, 500)
         error_data = response.json()
-        self.assertIn('error', error_data)
+        self.assertIn("error", error_data)
 
     def test_should_log_ytdlp_error_when_download_fails(self):
         """Test 4: Confirm ytdlp error is logged to Docker logs when download fails"""
@@ -195,13 +194,13 @@ class TestIntegration(unittest.TestCase):
         response = requests.post(
             f"{self.BASE_URL}/download",
             data={"url": failing_url, "format": "video"},
-            timeout=30
+            timeout=30,
         )
 
         # Confirm that download fails with error status
         self.assertEqual(response.status_code, 500)
         error_data = response.json()
-        self.assertIn('error', error_data)
+        self.assertIn("error", error_data)
 
         # Note: The actual Docker log checking should be done externally
         # This test confirms the error response is returned correctly
@@ -209,6 +208,5 @@ class TestIntegration(unittest.TestCase):
         print(f"Error response: {error_data['error']}")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main(verbosity=2)
-
