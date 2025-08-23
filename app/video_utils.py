@@ -1,7 +1,7 @@
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse
 
 
-def is_valid_video_url(url):
+def is_valid_video_url(url: str) -> bool:
     """Check validity of video URL (YouTube/Twitter/TikTok)"""
     parsed = urlparse(url)
     # YouTube URLs
@@ -26,7 +26,7 @@ def is_valid_video_url(url):
     return False
 
 
-def clean_video_url(url):
+def clean_video_url(url: str) -> str:
     """Clean up video URL (keep only v= parameter for YouTube, remove tracking params for TikTok, return as-is for Twitter)"""
     parsed = urlparse(url)
 

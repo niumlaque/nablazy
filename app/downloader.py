@@ -1,3 +1,4 @@
+from typing import Any, Dict, List, Tuple
 import os
 import tempfile
 import shutil
@@ -11,14 +12,16 @@ from exceptions import VideoDownloadError, FileNotFoundError
 class ProgressHook:
     """Progress tracking for yt-dlp downloads"""
 
-    def __init__(self):
+    last_percent: int
+
+    def __init__(self) -> None:
         self.last_percent = -1
 
-    def reset(self):
+    def reset(self) -> None:
         """Reset progress tracking for new download"""
         self.last_percent = -1
 
-    def __call__(self, d):
+    def __call__(self, d: Dict[str, Any]) -> None:
         """Progress hook for yt-dlp to show download progress"""
         if d["status"] == "downloading":
             if "total_bytes" in d and d["total_bytes"]:
@@ -40,10 +43,12 @@ class ProgressHook:
 class Downloader:
     """Video downloader class"""
 
-    def __init__(self):
+    progress_hook: ProgressHook
+
+    def __init__(self) -> None:
         self.progress_hook = ProgressHook()
 
-    def get_video_title(self, url):
+    def get_video_title(self, url: str) -> str:
         """Get video title"""
         ydl_opts = {
             "quiet": True,
@@ -52,12 +57,15 @@ class Downloader:
         try:
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info_dict = ydl.extract_info(url, download=False)
-                return info_dict.get("title", "download")
+                if isinstance(info_dict, dict):
+                    return str(info_dict.get("title", "download"))
+                else:
+                    return "download"
         except Exception:
             # Fallback when title acquisition fails (invalid URLs, deleted videos, etc.)
             return "download"
 
-    def build_ytdlp_options(self, temp_dir, format_type):
+    def build_ytdlp_options(self, temp_dir: str, format_type: str) -> Dict[str, Any]:
         """Build yt-dlp options"""
         output_template = os.path.join(temp_dir, "%(title)s.%(ext)s")
 
@@ -91,7 +99,7 @@ class Downloader:
 
         return base_opts
 
-    def execute_download(self, url, ydl_opts):
+    def execute_download(self, url: str, ydl_opts: Dict[str, Any]) -> None:
         """Execute download"""
         try:
             # Reset progress tracking for new download
@@ -101,9 +109,9 @@ class Downloader:
         except Exception as e:
             raise VideoDownloadError(f"ダウンロードエラー: {str(e)}")
 
-    def find_downloaded_file(self, temp_dir):
+    def find_downloaded_file(self, temp_dir: str) -> str:
         """Find downloaded file"""
-        downloaded_files = []
+        downloaded_files: List[str] = []
         for file in os.listdir(temp_dir):
             if os.path.isfile(os.path.join(temp_dir, file)):
                 downloaded_files.append(file)
@@ -113,7 +121,9 @@ class Downloader:
 
         return downloaded_files[0]
 
-    def download_video(self, url, format_type="video", download_dir="/app/downloads"):
+    def download_video(
+        self, url: str, format_type: str = "video", download_dir: str = "/app/downloads"
+    ) -> Tuple[str, str]:
         """Download video"""
         if not is_valid_video_url(url):
             raise ValueError("有効な動画URL（YouTube/Twitter/TikTok）ではありません")
@@ -144,7 +154,9 @@ class Downloader:
 
 
 # Backward compatibility function
-def download_video(url, format_type="video", download_dir="/app/downloads"):
+def download_video(
+    url: str, format_type: str = "video", download_dir: str = "/app/downloads"
+) -> Tuple[str, str]:
     """Download video (backward compatibility function)"""
     downloader = Downloader()
     return downloader.download_video(url, format_type, download_dir)

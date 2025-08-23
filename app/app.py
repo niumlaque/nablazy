@@ -1,13 +1,22 @@
 #!/usr/bin/env python3
+from typing import Tuple, Union
 import os
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, render_template, request, send_file, jsonify, Response
 
 from downloader import download_video
 from file_utils import create_ascii_filename, create_content_disposition_header
 
 
 class App:
-    def __init__(self):
+    flask_app: Flask
+    default_download_dir: str
+    default_host: str
+    default_port: int
+    download_dir: str
+    host: str
+    port: int
+
+    def __init__(self) -> None:
         self.flask_app = Flask(__name__)
 
         self.default_download_dir = "/app/downloads"
@@ -22,17 +31,17 @@ class App:
 
         self._setup_routes()
 
-    def _setup_routes(self):
+    def _setup_routes(self) -> None:
         """Setup Flask routes"""
         self.flask_app.route("/")(self.index)
         self.flask_app.route("/download", methods=["POST"])(self.download)
         self.flask_app.route("/health")(self.health)
 
-    def index(self):
+    def index(self) -> str:
         """Main page"""
         return render_template("index.html")
 
-    def create_download_response(self, file_path, filename):
+    def create_download_response(self, file_path: str, filename: str) -> Response:
         """Create download response"""
         ascii_filename = create_ascii_filename(filename)
 
@@ -51,7 +60,7 @@ class App:
 
         return response
 
-    def download(self):
+    def download(self) -> Union[Response, Tuple[Response, int]]:
         """Download processing"""
         try:
             url = request.form.get("url")
@@ -72,11 +81,11 @@ class App:
             print(msg)
             return jsonify({"error": msg}), 500
 
-    def health(self):
+    def health(self) -> Response:
         """Health check"""
         return jsonify({"status": "ok"})
 
-    def run(self):
+    def run(self) -> None:
         """Run the application"""
         self.flask_app.run(host=self.host, port=self.port, debug=False)
 
