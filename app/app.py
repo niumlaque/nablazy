@@ -1,10 +1,19 @@
 #!/usr/bin/env python3
-from typing import Tuple, Union
+from typing import Any, Tuple, Union
 import os
-from flask import Flask, render_template, request, send_file, jsonify, Response
+from flask import (
+    Flask,
+    render_template,
+    request,
+    send_file,
+    jsonify,
+    Response,
+    stream_with_context,
+)
 
 from downloader import download_video
 from file_utils import create_ascii_filename, create_content_disposition_header
+from progress import progress_stream as progress_channel
 
 
 class App:
@@ -36,6 +45,7 @@ class App:
         self.flask_app.route("/")(self.index)
         self.flask_app.route("/download", methods=["POST"])(self.download)
         self.flask_app.route("/health")(self.health)
+        self.flask_app.route("/progress")(self.progress_events)
 
     def index(self) -> str:
         """Main page"""
@@ -65,13 +75,18 @@ class App:
         try:
             url = request.form.get("url")
             format_type = request.form.get("format")
+            session_id = request.form.get("session_id")
             print(f"/download: [{format_type}] {url}", flush=True)
 
             if not url or not format_type:
                 return jsonify({"error": "URLと形式を指定してください"}), 400
 
             # Execute download
-            file_path, filename = download_video(url, format_type, self.download_dir)
+            if session_id:
+                progress_channel.publish(session_id, "Download started")
+            file_path, filename = download_video(
+                url, format_type, self.download_dir, session_id=session_id
+            )
             print(f'Save: "{file_path}"')
 
             # Create response
@@ -84,6 +99,35 @@ class App:
     def health(self) -> Response:
         """Health check"""
         return jsonify({"status": "ok"})
+
+    def progress_events(self) -> Union[Response, Tuple[Response, int]]:
+        """SSE endpoint for download progress"""
+        session_id = request.args.get("session_id")
+        if not session_id:
+            return jsonify({"error": "session_idを指定してください"}), 400
+
+        def event_stream() -> Any:
+            listener = progress_channel.register(session_id)
+            try:
+                while True:
+                    message = listener.get()
+                    if message is None:
+                        yield "event: complete\ndata: done\n\n"
+                        break
+                    yield f"event: progress\ndata: {message}\n\n"
+            finally:
+                progress_channel.unregister(session_id, listener)
+
+        headers = {
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        }
+        return Response(
+            stream_with_context(event_stream()),
+            mimetype="text/event-stream",
+            headers=headers,
+        )
 
     def run(self) -> None:
         """Run the application"""

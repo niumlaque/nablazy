@@ -34,84 +34,147 @@
     </div>
 
     <script>
-        document.getElementById('download-form').addEventListener('submit', function (e) {
-            e.preventDefault();
-
+        (function () {
             const status = document.getElementById('status');
             const downloadBtn = document.getElementById('download-btn');
-            const url = document.getElementById('url').value;
-            const format = document.getElementById('format').value;
+            let eventSource = null;
+            let sessionCounter = 0;
 
-            if (!url || !format) {
-                status.innerHTML = '<p class="error">Please enter URL and format</p>';
-                return;
+            function createSessionId() {
+                if (window.crypto && window.crypto.randomUUID) {
+                    return window.crypto.randomUUID();
+                }
+                sessionCounter += 1;
+                return String(Date.now()) + '-' + sessionCounter;
             }
 
-            // Disable button
-            downloadBtn.disabled = true;
-            downloadBtn.textContent = 'Downloading...';
-
-            status.innerHTML = '<p class="loading">Starting download...</p>';
-
-            const formData = new FormData();
-            formData.append('url', url);
-            formData.append('format', format);
-
-            fetch('/download', {
-                method: 'POST',
-                body: formData
-            })
-                .then(response => {
-                    if (response.ok) {
-                        // Get filename from Content-Disposition header
-                        const contentDisposition = response.headers.get('Content-Disposition');
-                        let filename = 'download';
-
-                        if (contentDisposition) {
-                            // Get from filename*=UTF-8''<encoded_filename> format
-                            const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''(?:')?([^;]+)/i);
-                            if (filenameStarMatch) {
-                                filename = decodeURIComponent(filenameStarMatch[1]);
-                            } else {
-                                // Get from standard filename="<filename>" format
-                                const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
-                                if (filenameMatch) {
-                                    filename = filenameMatch[1];
-                                }
-                            }
-                        }
-
-                        return { blob: response.blob(), filename: filename };
-                    } else {
-                        throw new Error('Download error');
+            function openEventStream(sessionId) {
+                return new Promise(function (resolve) {
+                    if (eventSource) {
+                        eventSource.close();
                     }
-                })
-                .then(data => {
-                    return data.blob.then(blob => {
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.style.display = 'none';
-                        a.href = url;
-                        a.download = data.filename;
-                        document.body.appendChild(a);
-                        a.click();
-                        window.URL.revokeObjectURL(url);
-                        document.body.removeChild(a);
-                        status.innerHTML = '<p class="success">Download completed</p>';
+                    eventSource = new EventSource('/progress?session_id=' + encodeURIComponent(sessionId));
+                    let resolved = false;
 
-                        // Enable button
-                        downloadBtn.disabled = false;
-                        downloadBtn.textContent = 'Download';
+                    function finish() {
+                        if (!resolved) {
+                            resolved = true;
+                            resolve();
+                        }
+                    }
+
+                    eventSource.addEventListener('progress', function (event) {
+                        status.innerHTML = '<p class="loading">' + event.data + '</p>';
                     });
-                })
-                .catch(error => {
-                    status.innerHTML = '<p class="error">An error occurred: ' + error.message + '</p>';
+                    eventSource.addEventListener('complete', function () {
+                        if (eventSource) {
+                            eventSource.close();
+                            eventSource = null;
+                        }
+                    });
+                    eventSource.onopen = finish;
+                    eventSource.onerror = function () {
+                        if (eventSource) {
+                            eventSource.close();
+                            eventSource = null;
+                        }
+                        finish();
+                    };
 
-                    // Enable button
-                    downloadBtn.disabled = false;
-                    downloadBtn.textContent = 'Download';
+                    setTimeout(finish, 200);
                 });
-        });
+            }
+
+            function closeEventStream() {
+                if (eventSource) {
+                    eventSource.close();
+                    eventSource = null;
+                }
+            }
+
+            document.getElementById('download-form').addEventListener('submit', function (e) {
+                e.preventDefault();
+
+                const url = document.getElementById('url').value;
+                const format = document.getElementById('format').value;
+
+                if (!url || !format) {
+                    status.innerHTML = '<p class="error">Please enter URL and format</p>';
+                    return;
+                }
+
+                // Disable button
+                downloadBtn.disabled = true;
+                downloadBtn.textContent = 'Downloading...';
+
+                status.innerHTML = '<p class="loading">Starting download...</p>';
+
+                const sessionId = createSessionId();
+                const formData = new FormData();
+                formData.append('url', url);
+                formData.append('format', format);
+                formData.append('session_id', sessionId);
+
+                openEventStream(sessionId).finally(function () {
+                    fetch('/download', {
+                        method: 'POST',
+                        body: formData
+                    })
+                        .then(response => {
+                            if (response.ok) {
+                                // Get filename from Content-Disposition header
+                                const contentDisposition = response.headers.get('Content-Disposition');
+                                let filename = 'download';
+
+                                if (contentDisposition) {
+                                    // Get from filename*=UTF-8''<encoded_filename> format
+                                    const filenameStarMatch = contentDisposition.match(/filename\*=UTF-8''(?:')?([^;]+)/i);
+                                    if (filenameStarMatch) {
+                                        filename = decodeURIComponent(filenameStarMatch[1]);
+                                    } else {
+                                        // Get from standard filename="<filename>" format
+                                        const filenameMatch = contentDisposition.match(/filename="([^"]+)"/);
+                                        if (filenameMatch) {
+                                            filename = filenameMatch[1];
+                                        }
+                                    }
+                                }
+
+                                return { blob: response.blob(), filename: filename };
+                            } else {
+                                throw new Error('Download error');
+                            }
+                        })
+                        .then(data => {
+                            return data.blob.then(blob => {
+                                const url = window.URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.style.display = 'none';
+                                a.href = url;
+                                a.download = data.filename;
+                                document.body.appendChild(a);
+                                a.click();
+                                window.URL.revokeObjectURL(url);
+                                document.body.removeChild(a);
+                                status.innerHTML = '<p class="success">Download completed</p>';
+
+                                // Enable button
+                                downloadBtn.disabled = false;
+                                downloadBtn.textContent = 'Download';
+                                closeEventStream();
+                            });
+                        })
+                        .catch(error => {
+                            status.innerHTML = '<p class="error">An error occurred: ' + error.message + '</p>';
+
+                            // Enable button
+                            downloadBtn.disabled = false;
+                            downloadBtn.textContent = 'Download';
+                            closeEventStream();
+                        });
+                });
+            });
+        })();
     </script>
 </body>
 
