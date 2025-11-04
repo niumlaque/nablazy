@@ -49,7 +49,40 @@ class ProgressHook:
                     self.last_percent = int(percent)
                     self._emit(f"Download progress: {int(percent)}% (estimated)")
         elif d["status"] == "finished":
-            self._emit(f"Download completed")
+            self._emit("Download completed")
+
+
+class PostProcessorHook:
+    """Postprocessing tracking for yt-dlp downloads"""
+
+    def __init__(self) -> None:
+        self.session_id: Optional[str] = None
+
+    def attach_session(self, session_id: Optional[str]) -> None:
+        """Bind the hook to a session for SSE publishing"""
+        self.session_id = session_id
+
+    def _emit(self, message: str) -> None:
+        """Publish postprocessing status to console and SSE"""
+        print(message, flush=True)
+        if self.session_id:
+            progress_stream.publish(self.session_id, message)
+
+    def __call__(self, d: Dict[str, Any]) -> None:
+        """Postprocessor hook callback"""
+        postprocessor = d.get("postprocessor")
+        status = d.get("status")
+
+        if postprocessor not in ["FFmpegExtractAudio", "ExtractAudio"]:
+            print(f"Unexpected postprocessor: {postprocessor}")
+            return
+
+        if status == "started":
+            self._emit("Audio conversion started")
+        elif status == "processing":
+            self._emit("Audio conversion in progress")
+        elif status == "finished":
+            self._emit("Audio conversion completed")
 
 
 class Downloader:
@@ -59,6 +92,7 @@ class Downloader:
 
     def __init__(self) -> None:
         self.progress_hook = ProgressHook()
+        self.postprocessor_hook = PostProcessorHook()
 
     def get_video_title(self, url: str) -> str:
         """Get video title"""
@@ -99,6 +133,7 @@ class Downloader:
                             "preferredquality": "192",
                         }
                     ],
+                    "postprocessor_hooks": [self.postprocessor_hook],
                 }
             )
         else:
@@ -119,6 +154,7 @@ class Downloader:
             # Reset progress tracking for new download
             self.progress_hook.reset()
             self.progress_hook.attach_session(session_id)
+            self.postprocessor_hook.attach_session(session_id)
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 ydl.download([url])
         except Exception as e:
