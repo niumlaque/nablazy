@@ -203,8 +203,8 @@ class Downloader:
                 )
                 destination = os.path.join(download_dir, final_filename)
 
-                # Copy file to final location (from temporary directory to persistent location)
-                shutil.copy2(source_file, destination)
+                # Move file from temporary directory to persistent location to avoid extra copy
+                shutil.move(source_file, destination)
 
                 return destination, final_filename
         finally:
