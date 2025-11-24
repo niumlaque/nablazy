@@ -8,6 +8,7 @@ from video_utils import is_valid_video_url, clean_video_url
 from file_utils import create_safe_filename, create_download_filename
 from exceptions import VideoDownloadError, FileNotFoundError
 from progress import progress_stream
+from job_status import job_status_store
 
 
 class ProgressHook:
@@ -32,6 +33,9 @@ class ProgressHook:
         print(message, flush=True)
         if self.session_id:
             progress_stream.publish(self.session_id, message)
+            job_status_store.set_status(
+                self.session_id, "in_progress", message
+            )
 
     def __call__(self, d: Dict[str, Any]) -> None:
         """Progress hook for yt-dlp to show download progress"""
@@ -67,6 +71,9 @@ class PostProcessorHook:
         print(message, flush=True)
         if self.session_id:
             progress_stream.publish(self.session_id, message)
+            job_status_store.set_status(
+                self.session_id, "processing", message
+            )
 
     def __call__(self, d: Dict[str, Any]) -> None:
         """Postprocessor hook callback"""

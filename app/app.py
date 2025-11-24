@@ -14,6 +14,7 @@ from flask import (
 from downloader import download_video
 from file_utils import create_ascii_filename, create_content_disposition_header
 from progress import progress_stream as progress_channel
+from job_status import job_status_store
 
 
 class App:
@@ -45,6 +46,7 @@ class App:
         self.flask_app.route("/")(self.index)
         self.flask_app.route("/download", methods=["POST"])(self.download)
         self.flask_app.route("/health")(self.health)
+        self.flask_app.route("/jobs/<job_id>/status")(self.job_status)
         self.flask_app.route("/progress")(self.progress_events)
 
     def index(self) -> str:
@@ -83,22 +85,37 @@ class App:
 
             # Execute download
             if session_id:
+                job_status_store.set_status(
+                    session_id, "started", "ダウンロードを開始しました"
+                )
                 progress_channel.publish(session_id, "Download started")
             file_path, filename = download_video(
                 url, format_type, self.download_dir, session_id=session_id
             )
             print(f'Save: "{file_path}"')
+            if session_id:
+                job_status_store.set_status(
+                    session_id, "completed", "ダウンロードが完了しました"
+                )
 
             # Create response
             return self.create_download_response(file_path, filename)
         except Exception as e:
             msg = str(e)
             print(msg)
+            if session_id:
+                job_status_store.set_status(session_id, "error", msg)
             return jsonify({"error": msg}), 500
 
     def health(self) -> Response:
         """Health check"""
         return jsonify({"status": "ok"})
+
+    def job_status(self, job_id: str) -> Tuple[Response, int]:
+        """Get job status"""
+        status = job_status_store.get_status(job_id)
+        http_status = 200 if status.get("status") != "not_found" else 404
+        return jsonify({"job_id": job_id, **status}), http_status
 
     def progress_events(self) -> Union[Response, Tuple[Response, int]]:
         """SSE endpoint for download progress"""
